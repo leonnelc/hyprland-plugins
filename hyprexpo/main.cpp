@@ -57,14 +57,19 @@ static void hkAddDamageB(void* thisptr, const pixman_region32_t* rg) {
 
 static float gestured       = 0;
 bool         swipeActive    = false;
+bool         swipeInverted  = false;
 char         swipeDirection = 0; // 0 = no direction, 'v' = vertical, 'h' = horizontal
 
 static void  swipeBegin(void* self, SCallbackInfo& info, std::any param) {
     swipeActive    = false;
+    swipeInverted  = false;
     swipeDirection = 0;
+    gestured       = 0;
 }
 
 static void swipeUpdate(void* self, SCallbackInfo& info, std::any param) {
+    if (g_pOverview && g_pOverview->closing)
+        return;
     static auto* const* PENABLE   = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:enable_gesture")->getDataStaticPtr();
     static auto* const* FINGERS   = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gesture_fingers")->getDataStaticPtr();
     static auto* const* PPOSITIVE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gesture_positive")->getDataStaticPtr();
@@ -86,29 +91,30 @@ static void swipeUpdate(void* self, SCallbackInfo& info, std::any param) {
         return;
 
     info.cancelled = true;
-    if (!swipeActive) {
-        if (g_pOverview)
-            return;
+    if (!swipeActive && g_pOverview) {
+        swipeActive   = true;
+        swipeInverted = true;
+    }
+    if (!swipeActive && !g_pOverview) {
         if ((**PPOSITIVE ? 1.0 : -1.0) * e.delta.y <= 0)
             return;
         renderingOverview = true;
         g_pOverview       = std::make_unique<COverview>(g_pCompositor->m_pLastMonitor->activeWorkspace, true);
         renderingOverview = false;
-        gestured          = 0;
         swipeActive       = true;
     }
 
-    gestured += (**PPOSITIVE ? 1.0 : -1.0) * e.delta.y;
-    if (gestured <= 0.01) // plugin will crash if swipe ends at <= 0
-        gestured = 0.01;
+    gestured += (**PPOSITIVE ? 1.0 : -1.0) * e.delta.y * (swipeInverted ? -1.0 : 1.0);
+    if (gestured < 0)
+        gestured = 0;
     g_pOverview->onSwipeUpdate(gestured);
 }
 
 static void swipeEnd(void* self, SCallbackInfo& info, std::any param) {
-    if (!g_pOverview)
+    if (!g_pOverview || g_pOverview->closing)
         return;
 
-    swipeActive = false;
+    swipeActive    = false;
     info.cancelled = true;
 
     g_pOverview->onSwipeEnd();

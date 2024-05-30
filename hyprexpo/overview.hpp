@@ -35,6 +35,7 @@ class COverview {
     bool      blockDamageReporting   = false;
 
     CMonitor* pMonitor = nullptr;
+    bool      closing  = false;
 
   private:
     void   redrawID(int id, bool forcelowres = false);
@@ -66,7 +67,6 @@ class COverview {
     CAnimatedVariable<Vector2D>  size;
     CAnimatedVariable<Vector2D>  pos;
 
-    bool                         closing = false;
 
     SP<HOOK_CALLBACK_FN>         mouseMoveHook;
     SP<HOOK_CALLBACK_FN>         mouseButtonHook;

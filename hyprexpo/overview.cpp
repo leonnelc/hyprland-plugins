@@ -209,7 +209,7 @@ COverview::COverview(PHLWORKSPACE startedOn_, bool swipe_) : startedOn(startedOn
     touchMoveHook = g_pHookSystem->hookDynamic("touchMove", onCursorMove);
 
     mouseButtonHook = g_pHookSystem->hookDynamic("mouseButton", onCursorSelect);
-    touchUpHook = g_pHookSystem->hookDynamic("touchUp", onCursorSelect);
+    touchUpHook     = g_pHookSystem->hookDynamic("touchUp", onCursorSelect);
 }
 
 void COverview::redrawID(int id, bool forcelowres) {
@@ -418,12 +418,10 @@ static Vector2D lerp(const Vector2D& from, const Vector2D& to, const float perc)
 }
 
 void COverview::onSwipeUpdate(double delta) {
-    if (swipeWasCommenced)
-        return;
 
     static auto* const* PDISTANCE = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprexpo:gesture_distance")->getDataStaticPtr();
 
-    const float         PERC = 1.0 - std::clamp(delta / (double)**PDISTANCE, 0.0, 1.0);
+    float               PERC = 0.999 - std::clamp(delta / (double)**PDISTANCE, 0.0, 0.999); // 1.0 crashes onSwipeEnd when calling close
 
     Vector2D            tileSize = (pMonitor->vecSize / SIDE_LENGTH);
 
@@ -434,6 +432,8 @@ void COverview::onSwipeUpdate(double delta) {
     const auto SIZEMIN = pMonitor->vecSize;
     const auto POSMIN  = Vector2D{0, 0};
 
+    if (swipeWasCommenced)
+        PERC = 0.999 - PERC;
     size.setValueAndWarp(lerp(SIZEMIN, SIZEMAX, PERC));
     pos.setValueAndWarp(lerp(POSMIN, POSMAX, PERC));
 }
